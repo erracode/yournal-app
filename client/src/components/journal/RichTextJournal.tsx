@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react"
-import { BookOpen, Settings, LogOut, X, Edit2, Loader2 } from "lucide-react"
+import { BookOpen, X, Edit2, Loader2 } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import { useIntersectionObserver, useDebounce } from "@uidotdev/usehooks"
-import { useUser, useSignOut } from "@/lib/auth-hooks"
+import { useUser } from "@/lib/auth-hooks"
 import {
   useEntries,
   useCreateEntry,
@@ -10,7 +10,6 @@ import {
   useDeleteEntry,
 } from "@/lib/entries-hooks"
 import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { YooptaEntryEditor } from "./YooptaEntryEditor"
 import { YooptaContentRenderer } from "./YooptaContentRenderer"
 import type { Entry } from "@/lib/entries-hooks"
@@ -24,7 +23,6 @@ export function RichTextJournal() {
     isFetchingNextPage,
     isLoading: entriesLoading,
   } = useEntries()
-  const signOutMutation = useSignOut()
   const createEntryMutation = useCreateEntry()
   const updateEntryMutation = useUpdateEntry()
   const deleteEntryMutation = useDeleteEntry()
@@ -139,8 +137,8 @@ export function RichTextJournal() {
     }
   }, [allEntries.length, entriesData?.pages.length])
 
-  const handleSaveEntry = async (entryContent: string) => {
-    if (!entryContent.trim()) return
+  const handleSaveEntry = async (entryContent: any, textContent: string) => {
+    if (!textContent.trim()) return
 
     setIsSaving(true)
 
@@ -160,8 +158,8 @@ export function RichTextJournal() {
     setEditingContent(JSON.stringify(entry.content))
   }
 
-  const handleUpdateEntry = async (entryContent: string) => {
-    if (!editingId) return
+  const handleUpdateEntry = async (entryContent: any, textContent: string) => {
+    if (!editingId || !textContent.trim()) return
 
     try {
       await updateEntryMutation.mutateAsync({
@@ -196,14 +194,6 @@ export function RichTextJournal() {
     }
   }
 
-  const handleSignOut = async () => {
-    try {
-      await signOutMutation.mutateAsync()
-    } catch (error) {
-      console.error("Error signing out:", error)
-    }
-  }
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     const now = new Date()
@@ -233,43 +223,10 @@ export function RichTextJournal() {
   }
 
   return (
-    <div className="h-screen bg-background flex flex-col">
-      {/* Fixed Header - Compact */}
-      <header className="flex items-center justify-between px-4 py-2 bg-background z-10">
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">yournal</span>
-          <span className="text-xs text-muted-foreground ml-2">Rich Text</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground mr-2">
-            {user.user_metadata?.full_name || user.email}
-          </span>
-          <ThemeToggle />
-          <Button
-            className="p-1.5 h-auto"
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowSettings(!showSettings)}
-          >
-            <Settings className="w-4 h-4 text-muted-foreground" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSignOut}
-            disabled={signOutMutation.isPending}
-            className="p-1.5 h-auto"
-          >
-            <LogOut className="w-4 h-4 text-muted-foreground" />
-          </Button>
-        </div>
-      </header>
-
+    <div className="h-full bg-background flex flex-col">
       {/* Settings Panel */}
       {showSettings && (
-        <div className="absolute top-12 right-4 z-50 bg-background rounded-lg shadow-xl p-4 min-w-64">
+        <div className="absolute top-2 right-2 z-50 bg-background rounded-lg shadow-xl p-4 min-w-64">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-foreground">Settings</h3>
             <button

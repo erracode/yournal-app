@@ -5,10 +5,11 @@ import YooptaEditor, {
 } from "@yoopta/editor"
 import Paragraph from "@yoopta/paragraph"
 import Blockquote from "@yoopta/blockquote"
+import { plainText } from "@yoopta/exports"
 import { Button } from "@/components/ui/button"
 
 interface YooptaEntryEditorProps {
-  onSubmit: (content: string) => Promise<void>
+  onSubmit: (content: YooptaContentValue, textContent: string) => Promise<void>
   initialContent?: string
   isEditing?: boolean
   onCancel?: () => void
@@ -145,7 +146,8 @@ export function YooptaEntryEditor({
       }
 
       // Use the editor content, not the value state
-      await onSubmit(JSON.stringify(editorContent))
+      const textContent = plainText.serialize(editor, editorContent)
+      await onSubmit(editorContent, textContent)
 
       // Always reset to empty state after successful save
       const emptyValue = {

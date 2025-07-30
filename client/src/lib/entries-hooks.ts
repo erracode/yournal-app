@@ -1,10 +1,13 @@
 import { useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { apiClient } from './api'
+import { extractTextFromYoopta } from './utils'
 
 export type Entry = {
     id: number
     user_id: string
-    content: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    content: any // Yoopta content object - complex structure
+    text_content?: string
     created_at: string
     updated_at: string
 }
@@ -52,8 +55,9 @@ export function useCreateEntry() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async (content: string) => {
-            const response = await apiClient.createEntry(content)
+        mutationFn: async (content: object) => {
+            const textContent = extractTextFromYoopta(content)
+            const response = await apiClient.createEntry(content, textContent)
             return response.entry
         },
         onMutate: async (newContent) => {
@@ -69,7 +73,8 @@ export function useCreateEntry() {
 
                 const optimisticEntry: Entry = {
                     id: Date.now(), // Temporary ID
-                    content: newContent,
+                    content: newContent, // Don't stringify - keep as object
+                    text_content: extractTextFromYoopta(newContent),
                     created_at: new Date().toISOString(),
                     user_id: '', // Will be filled by backend
                     updated_at: new Date().toISOString(),
@@ -111,8 +116,9 @@ export function useUpdateEntry() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async ({ id, content }: { id: number; content: string }) => {
-            const response = await apiClient.updateEntry(id, content)
+        mutationFn: async ({ id, content }: { id: number; content: object }) => {
+            const textContent = extractTextFromYoopta(content)
+            const response = await apiClient.updateEntry(id, content, textContent)
             return response.entry
         },
         onMutate: async ({ id, content }) => {
@@ -130,7 +136,12 @@ export function useUpdateEntry() {
                     ...page,
                     entries: page.entries.map((entry: Entry) =>
                         entry.id === id
-                            ? { ...entry, content, updated_at: new Date().toISOString() }
+                            ? {
+                                ...entry,
+                                content: content, // Don't stringify - keep as object
+                                text_content: extractTextFromYoopta(content),
+                                updated_at: new Date().toISOString()
+                            }
                             : entry
                     )
                 }))

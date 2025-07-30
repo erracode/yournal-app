@@ -30,13 +30,15 @@ export function useSignUp() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async ({ email, password, fullName }: { email: string; password: string; fullName?: string }) => {
-            const response = await apiClient.signUp(email, password, fullName)
+        mutationFn: async ({ email, password }: { email: string; password: string }) => {
+            const response = await apiClient.signUp(email, password)
             return response
         },
         onSuccess: (data) => {
             // Update user state after successful signup
-            queryClient.setQueryData(userQueryKey, data.user)
+            if (data.user) {
+                queryClient.setQueryData(userQueryKey, data.user)
+            }
             queryClient.invalidateQueries({ queryKey: userQueryKey })
         },
     })
@@ -53,7 +55,9 @@ export function useSignIn() {
         },
         onSuccess: (data) => {
             // Update user state after successful signin
-            queryClient.setQueryData(userQueryKey, data.user)
+            if (data.user) {
+                queryClient.setQueryData(userQueryKey, data.user)
+            }
             queryClient.invalidateQueries({ queryKey: userQueryKey })
         },
     })
