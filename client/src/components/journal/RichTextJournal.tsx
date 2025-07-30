@@ -144,7 +144,10 @@ export function RichTextJournal() {
 
     try {
       // Save the entry (TanStack Query handles optimistic updates)
-      await createEntryMutation.mutateAsync(entryContent)
+      await createEntryMutation.mutateAsync({
+        content: entryContent,
+        textContent,
+      })
       setLastSaved(new Date())
     } catch (error) {
       console.error("Error saving entry:", error)
@@ -165,6 +168,7 @@ export function RichTextJournal() {
       await updateEntryMutation.mutateAsync({
         id: editingId,
         content: entryContent,
+        textContent,
       })
       setEditingId(null)
       setEditingContent("")

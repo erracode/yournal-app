@@ -9,6 +9,70 @@ interface ContextWithUser {
 
 const ai = new Hono<{ Variables: ContextWithUser }>()
 
+// Function to handle temporal queries (yesterday, today, last week, etc.)
+async function handleTemporalQuery(message: string, userId: string): Promise<any[]> {
+    const lowerMessage = message.toLowerCase()
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    let startDate: Date
+    let endDate: Date
+    let description: string
+
+    if (lowerMessage.includes('yesterday')) {
+        startDate = yesterday
+        endDate = today
+        description = 'yesterday'
+    } else if (lowerMessage.includes('today')) {
+        startDate = today
+        endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000)
+        description = 'today'
+    } else if (lowerMessage.includes('last week')) {
+        const lastWeekStart = new Date(today)
+        lastWeekStart.setDate(lastWeekStart.getDate() - 7)
+        startDate = lastWeekStart
+        endDate = today
+        description = 'last week'
+    } else if (lowerMessage.includes('this week')) {
+        const weekStart = new Date(today)
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+        startDate = weekStart
+        endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000)
+        description = 'this week'
+    } else {
+        // Default to recent entries (last 7 days)
+        const recentStart = new Date(today)
+        recentStart.setDate(recentStart.getDate() - 7)
+        startDate = recentStart
+        endDate = new Date(today.getTime() + 24 * 60 * 60 * 1000)
+        description = 'recent'
+    }
+
+    console.log(`📅 Fetching entries from ${description}:`, startDate.toISOString(), 'to', endDate.toISOString())
+
+    const { data: entries, error } = await supabase
+        .from('entries')
+        .select('id, content, text_content, created_at')
+        .eq('user_id', userId)
+        .gte('created_at', startDate.toISOString())
+        .lt('created_at', endDate.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+    if (error) {
+        console.error('Error fetching temporal entries:', error)
+        return []
+    }
+
+    // Add similarity score for temporal entries
+    return (entries || []).map(entry => ({
+        ...entry,
+        similarity: 0.8 // High similarity for temporal matches
+    }))
+}
+
 // Middleware to verify authentication
 async function authMiddleware(c: any, next: any) {
     const authHeader = c.req.header('Authorization')
@@ -96,54 +160,79 @@ ai.post('/chat/rag', authMiddleware, async (c) => {
         const { message } = await c.req.json()
         const user = c.get('user')
 
-        // Generate embedding for the user's query
-        const queryEmbedding = await generateEmbedding(message)
+        // Check if this is a temporal query (yesterday, today, last week, etc.)
+        const temporalKeywords = [
+            'yesterday', 'today', 'last week', 'this week', 'last month',
+            'this month', 'recent', 'past', 'ago', 'entries from', 'from yesterday',
+            'from today', 'from last week', 'from this week'
+        ]
 
-        // Use vector search to find relevant entries
-        let { data: relevantEntries, error: searchError } = await supabase
-            .from('entries')
-            .select('id, content, text_content, created_at')
-            .eq('user_id', user.id)
-            .not('embedding', 'is', null)
-            .order('created_at', { ascending: false })
-            .limit(10)
+        const isTemporalQuery = temporalKeywords.some(keyword =>
+            message.toLowerCase().includes(keyword.toLowerCase())
+        )
 
-        if (searchError) {
-            console.error('Vector search error:', searchError)
-            // Fallback to keyword search if vector search fails
+        console.log('🔍 Query type:', isTemporalQuery ? 'Temporal' : 'Semantic')
+
+        let relevantEntries: any[] = []
+        let searchError: any = null
+
+        if (isTemporalQuery) {
+            // Handle temporal queries by getting entries from specific time periods
+            console.log('📅 Processing temporal query:', message)
+            relevantEntries = await handleTemporalQuery(message, user.id)
+        } else {
+            // Generate embedding for semantic queries
+            const queryEmbedding = await generateEmbedding(message)
+
+            // Use true vector search to find relevant entries
+            console.log('🔍 Performing vector search for query:', message)
+            const result = await supabase.rpc('match_entries', {
+                query_embedding: queryEmbedding,
+                match_threshold: 0.3, // Lower threshold for better recall
+                match_count: 5,
+                p_user_id: user.id
+            })
+
+            relevantEntries = result.data || []
+            searchError = result.error
+        }
+
+        if (relevantEntries) {
+            console.log(`✅ Found ${relevantEntries.length} relevant entries with vector search`)
+            relevantEntries.forEach((entry: any, index: number) => {
+                const similarity = entry.similarity ? Math.round(entry.similarity * 100) : 0
+                console.log(`  ${index + 1}. ${similarity}% relevant: ${entry.text_content?.slice(0, 50)}...`)
+            })
+        }
+
+        if (searchError || !relevantEntries || relevantEntries.length === 0) {
+            console.log('🔍 No vector search results, falling back to recent entries')
+            // Fallback to recent entries if vector search fails or finds nothing
             const { data: entries, error: entriesError } = await supabase
                 .from('entries')
                 .select('id, content, text_content, created_at')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false })
-                .limit(10)
+                .limit(5)
 
             if (entriesError) {
                 console.error('Error fetching entries:', entriesError)
                 return c.json({ error: 'Failed to fetch journal entries' }, 500)
             }
 
-            // Fallback to keyword search
-            const searchTerms = message.toLowerCase().split(' ').filter((term: string) => term.length > 2)
-            const fallbackEntries = entries
-                .map((entry: any) => {
-                    const content = entry.text_content?.toLowerCase() || ''
-                    const exactMatches = searchTerms.filter((term: string) => content.includes(term)).length
-                    const relevance = exactMatches / searchTerms.length
-                    return { ...entry, relevance }
-                })
-                .filter((entry: any) => entry.relevance > 0)
-                .sort((a: any, b: any) => b.relevance - a.relevance)
-                .slice(0, 3)
-
-            relevantEntries = fallbackEntries
+            // Use recent entries as fallback
+            relevantEntries = entries.map((entry: any) => ({
+                ...entry,
+                similarity: 0.5 // Default similarity for recent entries
+            }))
         }
 
-        // Create context from relevant entries
+        // Create context from relevant entries with similarity scores
         const context = relevantEntries && relevantEntries.length > 0
-            ? `\n\nRelevant journal entries:\n${relevantEntries.map((entry: any) =>
-                `- ${new Date(entry.created_at).toLocaleDateString()}: ${entry.text_content?.slice(0, 150) || 'No text content'}...`
-            ).join('\n')}`
+            ? `\n\nRelevant journal entries:\n${relevantEntries.map((entry: any) => {
+                const similarity = entry.similarity ? Math.round(entry.similarity * 100) : 0
+                return `- ${new Date(entry.created_at).toLocaleDateString()} (${similarity}% relevant): ${entry.text_content?.slice(0, 150) || 'No text content'}...`
+            }).join('\n')}`
             : '\n\nNo relevant journal entries found.'
 
         const prompt = `You are an AI assistant that helps users analyze their journal entries. 

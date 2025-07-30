@@ -55,8 +55,7 @@ export function useCreateEntry() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async (content: object) => {
-            const textContent = extractTextFromYoopta(content)
+        mutationFn: async ({ content, textContent }: { content: object; textContent: string }) => {
             const response = await apiClient.createEntry(content, textContent)
             return response.entry
         },
@@ -73,8 +72,8 @@ export function useCreateEntry() {
 
                 const optimisticEntry: Entry = {
                     id: Date.now(), // Temporary ID
-                    content: newContent, // Don't stringify - keep as object
-                    text_content: extractTextFromYoopta(newContent),
+                    content: newContent.content, // Don't stringify - keep as object
+                    text_content: newContent.textContent,
                     created_at: new Date().toISOString(),
                     user_id: '', // Will be filled by backend
                     updated_at: new Date().toISOString(),
@@ -116,12 +115,11 @@ export function useUpdateEntry() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async ({ id, content }: { id: number; content: object }) => {
-            const textContent = extractTextFromYoopta(content)
+        mutationFn: async ({ id, content, textContent }: { id: number; content: object; textContent: string }) => {
             const response = await apiClient.updateEntry(id, content, textContent)
             return response.entry
         },
-        onMutate: async ({ id, content }) => {
+        onMutate: async ({ id, content, textContent }) => {
             // Cancel any outgoing refetches
             await queryClient.cancelQueries({ queryKey: entriesQueryKey })
 
@@ -139,7 +137,7 @@ export function useUpdateEntry() {
                             ? {
                                 ...entry,
                                 content: content, // Don't stringify - keep as object
-                                text_content: extractTextFromYoopta(content),
+                                text_content: textContent,
                                 updated_at: new Date().toISOString()
                             }
                             : entry
