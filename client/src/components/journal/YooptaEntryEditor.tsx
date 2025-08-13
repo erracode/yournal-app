@@ -174,14 +174,9 @@ export function YooptaEntryEditor({
           ],
         },
       }
-      // Reset the editor completely
+      // Reset the editor immediately
       setValue(emptyValue)
       setEditorKey((prev) => prev + 1)
-
-      // Ensure the editor is properly reset by forcing a re-render
-      setTimeout(() => {
-        setValue(emptyValue)
-      }, 50)
     } catch (error) {
       console.error("Error saving entry:", error)
     }

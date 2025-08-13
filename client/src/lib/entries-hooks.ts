@@ -59,52 +59,8 @@ export function useCreateEntry() {
             const response = await apiClient.createEntry(content, textContent)
             return response.entry
         },
-        onMutate: async (newContent) => {
-            // Cancel any outgoing refetches
-            await queryClient.cancelQueries({ queryKey: entriesQueryKey })
-
-            // Snapshot the previous value
-            const previousEntries = queryClient.getQueryData(entriesQueryKey)
-
-            // Optimistically update to the new value
-            queryClient.setQueryData(entriesQueryKey, (old: InfiniteEntriesData | undefined) => {
-                if (!old?.pages) return old
-
-                const optimisticEntry: Entry = {
-                    id: Date.now(), // Temporary ID
-                    content: newContent.content, // Don't stringify - keep as object
-                    text_content: newContent.textContent,
-                    created_at: new Date().toISOString(),
-                    user_id: '', // Will be filled by backend
-                    updated_at: new Date().toISOString(),
-                }
-
-                // Add to the first page (at the beginning, so it appears at bottom after reversal)
-                const updatedPages = [...old.pages]
-                if (updatedPages[0]) {
-                    updatedPages[0] = {
-                        ...updatedPages[0],
-                        entries: [optimisticEntry, ...updatedPages[0].entries]
-                    }
-                }
-
-                return {
-                    ...old,
-                    pages: updatedPages
-                }
-            })
-
-            // Return a context object with the snapshotted value
-            return { previousEntries }
-        },
-        onError: (err, newContent, context) => {
-            // If the mutation fails, use the context returned from onMutate to roll back
-            if (context?.previousEntries) {
-                queryClient.setQueryData(entriesQueryKey, context.previousEntries)
-            }
-        },
-        onSettled: () => {
-            // Always refetch after error or success
+        onSuccess: () => {
+            // Refresh entries after successful creation
             queryClient.invalidateQueries({ queryKey: entriesQueryKey })
         },
     })
@@ -119,48 +75,8 @@ export function useUpdateEntry() {
             const response = await apiClient.updateEntry(id, content, textContent)
             return response.entry
         },
-        onMutate: async ({ id, content, textContent }) => {
-            // Cancel any outgoing refetches
-            await queryClient.cancelQueries({ queryKey: entriesQueryKey })
-
-            // Snapshot the previous value
-            const previousEntries = queryClient.getQueryData(entriesQueryKey)
-
-            // Optimistically update to the new value
-            queryClient.setQueryData(entriesQueryKey, (old: InfiniteEntriesData | undefined) => {
-                if (!old?.pages) return old
-
-                const updatedPages = old.pages.map((page: EntriesResponse) => ({
-                    ...page,
-                    entries: page.entries.map((entry: Entry) =>
-                        entry.id === id
-                            ? {
-                                ...entry,
-                                content: content, // Don't stringify - keep as object
-                                text_content: textContent,
-                                updated_at: new Date().toISOString()
-                            }
-                            : entry
-                    )
-                }))
-
-                return {
-                    ...old,
-                    pages: updatedPages
-                }
-            })
-
-            // Return a context object with the snapshotted value
-            return { previousEntries }
-        },
-        onError: (err, variables, context) => {
-            // If the mutation fails, use the context returned from onMutate to roll back
-            if (context?.previousEntries) {
-                queryClient.setQueryData(entriesQueryKey, context.previousEntries)
-            }
-        },
-        onSettled: () => {
-            // Always refetch after error or success
+        onSuccess: () => {
+            // Refresh entries after successful update
             queryClient.invalidateQueries({ queryKey: entriesQueryKey })
         },
     })

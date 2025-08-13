@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { supabase } from '../lib/supabase'
 import { generateEmbedding } from '../lib/embeddings'
+import { requestyClient } from '../lib/requesty'
 import type { User } from '@supabase/supabase-js'
 
 interface ContextWithUser {
@@ -100,22 +101,12 @@ ai.post('/chat', authMiddleware, async (c) => {
     try {
         const { message } = await c.req.json()
 
-        const response = await fetch('http://localhost:11434/api/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: 'gemma3',
-                prompt: `You are a helpful AI assistant. Respond to: ${message}`,
-                stream: false
-            })
-        })
+        const response = await requestyClient.createChatCompletion([
+            { role: 'system', content: 'You are a helpful AI assistant.' },
+            { role: 'user', content: message }
+        ]) as any
 
-        if (!response.ok) {
-            throw new Error('Ollama request failed')
-        }
-
-        const data = await response.json() as { response: string }
-        return c.json({ response: data.response })
+        return c.json({ response: response.choices[0].message.content })
     } catch (error) {
         console.error('AI chat error:', error)
         return c.json({ error: 'AI service unavailable' }, 500)
@@ -127,19 +118,10 @@ ai.post('/chat/stream', authMiddleware, async (c) => {
     try {
         const { message } = await c.req.json()
 
-        const response = await fetch('http://localhost:11434/api/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: 'gemma3',
-                prompt: `You are a helpful AI assistant. Respond to: ${message}`,
-                stream: true
-            })
-        })
-
-        if (!response.ok) {
-            throw new Error('Ollama request failed')
-        }
+        const response = await requestyClient.createStreamingChatCompletion([
+            { role: 'system', content: 'You are a helpful AI assistant.' },
+            { role: 'user', content: message }
+        ]) as Response
 
         return new Response(response.body, {
             headers: {
@@ -249,19 +231,18 @@ ${context}
 
 Please respond in a helpful and analytical way:`
 
-        const response = await fetch('http://localhost:11434/api/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: 'gemma3',
-                prompt,
-                stream: true
-            })
-        })
+        const response = await requestyClient.createStreamingChatCompletion([
+            {
+                role: 'system', content: `You are an AI assistant that helps users analyze their journal entries. 
 
-        if (!response.ok) {
-            throw new Error('Ollama request failed')
-        }
+Your role is to:
+1. Analyze the provided journal entries for context
+2. Provide insights, patterns, or answers based on the user's journal content
+3. Be helpful and supportive in your analysis
+4. If no relevant entries are found, acknowledge this and offer general journaling advice
+5. Keep responses concise and focused on the user's question` },
+            { role: 'user', content: `${message}\n\n${context}` }
+        ]) as Response
 
         // Create a custom stream that includes sources
         const stream = new ReadableStream({
@@ -298,14 +279,14 @@ Please respond in a helpful and analytical way:`
                         buffer = lines.pop() || '' // Keep incomplete line in buffer
 
                         for (const line of lines) {
-                            if (line.trim()) {
+                            if (line.trim() && line.startsWith('data: ')) {
                                 try {
-                                    // Ollama sends JSON objects directly, not with "data: " prefix
-                                    const data = JSON.parse(line)
-                                    if (data.response) {
+                                    // Requesty sends Server-Sent Events format
+                                    const data = JSON.parse(line.slice(6)) // Remove "data: " prefix
+                                    if (data.choices && data.choices[0]?.delta?.content) {
                                         // Send the response chunk in our expected format
                                         const responseData = JSON.stringify({
-                                            response: data.response
+                                            response: data.choices[0].delta.content
                                         })
                                         controller.enqueue(new TextEncoder().encode(`data: ${responseData}\n\n`))
                                     }
@@ -337,18 +318,24 @@ Please respond in a helpful and analytical way:`
     }
 })
 
+
+
 // Health check for AI service
 ai.get('/health', async (c) => {
     try {
-        const response = await fetch('http://localhost:11434/api/tags')
-        if (response.ok) {
-            return c.json({ status: 'healthy', service: 'ollama' })
+        // Test Requesty connection with a simple request
+        const response = await requestyClient.createChatCompletion([
+            { role: 'user', content: 'Hello' }
+        ], { maxTokens: 10 })
+
+        if (response) {
+            return c.json({ status: 'healthy', service: 'requesty' })
         } else {
-            return c.json({ status: 'unhealthy', service: 'ollama' }, 503)
+            return c.json({ status: 'unhealthy', service: 'requesty' }, 503)
         }
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        return c.json({ status: 'unhealthy', service: 'ollama', error: errorMessage }, 503)
+        return c.json({ status: 'unhealthy', service: 'requesty', error: errorMessage }, 503)
     }
 })
 

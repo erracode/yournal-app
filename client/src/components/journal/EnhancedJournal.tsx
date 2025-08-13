@@ -1,8 +1,18 @@
 import { useState, useRef, useEffect } from "react"
-import { BookOpen, Settings, LogOut, X, Save } from "lucide-react"
+import {
+  BookOpen,
+  Settings,
+  LogOut,
+  X,
+  Save,
+  MessageSquare,
+  Sparkles,
+} from "lucide-react"
 import { useUser, useSignOut } from "@/lib/auth-hooks"
 import { useEntries, useCreateEntry } from "@/lib/entries-hooks"
 import { Button } from "@/components/ui/button"
+import { motion, AnimatePresence } from "motion/react"
+import { RagChat } from "@/components/ai/RagChat"
 import type { Entry } from "@/lib/entries-hooks"
 
 export function EnhancedJournal() {
@@ -17,14 +27,33 @@ export function EnhancedJournal() {
   const [showSettings, setShowSettings] = useState(false)
   const [autoSave, setAutoSave] = useState(false) // Disabled by default
   const [optimisticEntries, setOptimisticEntries] = useState<Entry[]>([])
+  const [showChat, setShowChat] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const historyRef = useRef<HTMLDivElement>(null)
 
   // Flatten all entries from all pages and combine with optimistic entries
   const allEntries = [
-    ...(entriesData?.pages.flatMap((page) => page.entries) || []),
+    ...(entriesData?.pages?.flatMap((page) => page.entries || []) || []),
     ...optimisticEntries,
-  ]
+  ].filter((entry) => entry && typeof entry === "object" && entry.id)
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + K to toggle chat
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault()
+        setShowChat((prev) => !prev)
+      }
+      // Escape to close chat
+      if (e.key === "Escape" && showChat) {
+        setShowChat(false)
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [showChat])
 
   // Auto-save functionality (only if enabled)
   useEffect(() => {
@@ -74,6 +103,7 @@ export function EnhancedJournal() {
     const optimisticEntry: Entry = {
       id: Date.now(), // Temporary ID
       content: entryContent,
+      text_content: entryContent,
       created_at: new Date().toISOString(),
       user_id: user?.id || "",
       updated_at: new Date().toISOString(),
@@ -235,31 +265,37 @@ export function EnhancedJournal() {
               </div>
             ) : (
               // Show entries in reverse chronological order (newest at bottom, oldest at top)
-              [...allEntries].reverse().map((entry: Entry) => (
-                <div
-                  key={entry.id}
-                  className={`group transition-all duration-700 ease-out ${
-                    optimisticEntries.some((opt) => opt.id === entry.id)
-                      ? "animate-in fade-in slide-in-from-top-8"
-                      : ""
-                  }`}
-                >
-                  <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    {formatDate(entry.created_at)}
-                  </div>
+              [...allEntries].reverse().map((entry: Entry) => {
+                if (!entry || !entry.id) return null
+                return (
                   <div
-                    className="text-foreground leading-relaxed font-serif"
-                    style={{
-                      fontFamily: '"Crimson Text", "Times New Roman", serif',
-                      fontSize: "1.125rem",
-                      lineHeight: "1.8",
-                      letterSpacing: "0.01em",
-                    }}
+                    key={entry.id}
+                    className={`group transition-all duration-700 ease-out ${
+                      optimisticEntries.some((opt) => opt.id === entry.id)
+                        ? "animate-in fade-in slide-in-from-top-8"
+                        : ""
+                    }`}
                   >
-                    {entry.content}
+                    <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      {formatDate(entry.created_at)}
+                    </div>
+                    <div
+                      className="text-foreground leading-relaxed font-serif"
+                      style={{
+                        fontFamily: '"Crimson Text", "Times New Roman", serif',
+                        fontSize: "1.125rem",
+                        lineHeight: "1.8",
+                        letterSpacing: "0.01em",
+                      }}
+                    >
+                      {entry.text_content ||
+                        (typeof entry.content === "string"
+                          ? entry.content
+                          : "")}
+                    </div>
                   </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
 
@@ -310,22 +346,94 @@ export function EnhancedJournal() {
                   }{" "}
                   words
                 </span>
-                {!autoSave && content.trim() && (
-                  <Button
-                    size="sm"
-                    onClick={handleManualSave}
-                    disabled={isSaving}
-                    className="h-6 px-2 text-xs"
+                <div className="flex items-center gap-2">
+                  {!autoSave && content.trim() && (
+                    <Button
+                      size="sm"
+                      onClick={handleManualSave}
+                      disabled={isSaving}
+                      className="h-6 px-2 text-xs"
+                    >
+                      <Save className="w-3 h-3 mr-1" />
+                      Save
+                    </Button>
+                  )}
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    <Save className="w-3 h-3 mr-1" />
-                    Save
-                  </Button>
-                )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowChat((prev) => !prev)}
+                      className="h-6 px-2 text-xs hover:bg-muted/50 transition-all duration-200"
+                      title="Toggle AI Chat (Ctrl+K)"
+                    >
+                      <MessageSquare className="w-3 h-3 mr-1" />
+                      AI Chat
+                    </Button>
+                  </motion.div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </main>
+
+      {/* Sliding Chat Panel */}
+      <AnimatePresence>
+        {showChat && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="fixed inset-0 bg-black/10 backdrop-blur-md z-40"
+              onClick={() => setShowChat(false)}
+            />
+
+            {/* Chat Panel */}
+            <motion.div
+              initial={{ x: "100%", opacity: 0, scale: 0.95 }}
+              animate={{ x: 0, opacity: 1, scale: 1 }}
+              exit={{ x: "100%", opacity: 0, scale: 0.95 }}
+              transition={{
+                type: "spring",
+                damping: 25,
+                stiffness: 200,
+                duration: 0.4,
+              }}
+              className="fixed right-0 top-0 h-full w-96 max-w-[90vw] bg-background/95 backdrop-blur-xl border-l border-border/30 shadow-2xl z-50"
+            >
+              {/* Chat Header */}
+              <div className="flex items-center justify-between p-4 border-b border-border/50 bg-background/80 backdrop-blur-sm">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">AI Assistant</span>
+                  <span className="text-xs text-muted-foreground">
+                    (Ctrl+K)
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowChat(false)}
+                  className="h-6 w-6 p-0 hover:bg-muted/50"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+
+              {/* Chat Content */}
+              <div className="h-full flex flex-col">
+                <RagChat />
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

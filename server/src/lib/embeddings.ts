@@ -3,12 +3,12 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     try {
         console.log('🔍 Generating embedding for text:', text.substring(0, 100) + '...')
 
-        // Use Ollama's embedding model (you can use nomic-embed-text or similar)
+        // Use Ollama's embedding model
         const response = await fetch('http://localhost:11434/api/embeddings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: 'nomic-embed-text', // You'll need to pull this model
+                model: 'nomic-embed-text', // 768-dimensional model
                 prompt: text
             })
         })

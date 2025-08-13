@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from "react"
-import { Send, Loader2, Bot, User, BookOpen, Sparkles } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Loader2 } from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { RichMessageRenderer } from "./RichMessageRenderer"
-import { useEntries } from "@/lib/entries-hooks"
+import { Input } from "../ui/input"
 
 interface Message {
   id: string
@@ -24,14 +23,17 @@ export function RagChat() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  // Get user's entries for RAG context
-  const { data: entriesData } = useEntries()
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  // Auto-focus input when component mounts
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,6 +49,11 @@ export function RagChat() {
     setMessages((prev) => [...prev, userMessage])
     setInput("")
     setIsLoading(true)
+
+    // Restore focus to input after clearing
+    setTimeout(() => {
+      inputRef.current?.focus()
+    }, 0)
 
     // Create streaming message
     const streamingMessage: Message = {
@@ -136,6 +143,11 @@ export function RagChat() {
       )
     } finally {
       setIsLoading(false)
+
+      // Restore focus to input after response completes
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 0)
     }
   }
 
@@ -143,65 +155,88 @@ export function RagChat() {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-
-    if (diffInHours < 1) {
-      return "Just now"
-    } else if (diffInHours < 24) {
-      return `${Math.floor(diffInHours)}h ago`
-    } else if (diffInHours < 48) {
-      return "Yesterday"
-    } else {
-      return date.toLocaleDateString()
-    }
+  const handleSuggestionClick = (suggestion: string) => {
+    setInput(suggestion)
+    inputRef.current?.focus()
   }
 
-  // Get total entries count for context
-  const totalEntries =
-    entriesData?.pages.reduce(
-      (total, page) => total + page.entries.length,
-      0
-    ) || 0
-
   return (
-    <div className="flex flex-col h-full max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-2 p-4 border-b bg-background">
-        <div className="flex items-center gap-2">
-          <Bot className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold">AI Journal Assistant</h2>
-          <Sparkles className="w-4 h-4 text-yellow-500" />
-        </div>
-        <div className="flex items-center gap-4 ml-auto text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <BookOpen className="w-3 h-3" />
-            <span>{totalEntries} entries</span>
-          </div>
-          <span>Powered by your journal</span>
-        </div>
-      </div>
-
+    <div className="flex flex-col h-full">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
         {messages.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
-            <Bot className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Ask me about your journal entries</p>
-            <p className="text-xs mt-1">
+            <p className="text-sm font-medium mb-2">
+              Ask me about your journal entries
+            </p>
+            <p className="text-xs opacity-70 mb-6">
               I can help you analyze, summarize, or find patterns in your
               writing
             </p>
-            <div className="mt-4 space-y-2 text-xs">
-              <p className="font-medium">Try asking:</p>
-              <ul className="space-y-1 text-muted-foreground">
-                <li>• "What themes have I been writing about lately?"</li>
-                <li>• "Summarize my entries from this week"</li>
-                <li>• "Find entries where I mentioned work stress"</li>
-                <li>• "What patterns do you see in my journaling?"</li>
-              </ul>
+
+            {/* Suggestions section - prepared for clickable boxes */}
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-foreground">Try asking:</p>
+              <div className="grid grid-cols-1 gap-2 max-w-sm mx-auto">
+                <div
+                  className="text-xs p-2 rounded border border-border/30 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                  onClick={() =>
+                    handleSuggestionClick(
+                      "What themes have I been writing about lately?"
+                    )
+                  }
+                >
+                  "What themes have I been writing about lately?"
+                </div>
+                <div
+                  className="text-xs p-2 rounded border border-border/30 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                  onClick={() =>
+                    handleSuggestionClick("Summarize my entries from this week")
+                  }
+                >
+                  "Summarize my entries from this week"
+                </div>
+                <div
+                  className="text-xs p-2 rounded border border-border/30 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                  onClick={() =>
+                    handleSuggestionClick(
+                      "Find entries where I mentioned work stress"
+                    )
+                  }
+                >
+                  "Find entries where I mentioned work stress"
+                </div>
+                <div
+                  className="text-xs p-2 rounded border border-border/30 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                  onClick={() =>
+                    handleSuggestionClick(
+                      "What patterns do you see in my journaling?"
+                    )
+                  }
+                >
+                  "What patterns do you see in my journaling?"
+                </div>
+
+                {/* Additional space for future suggestions */}
+                <div className="h-4"></div>
+
+                <div
+                  className="text-xs p-2 rounded border border-border/30 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                  onClick={() =>
+                    handleSuggestionClick("Show me my most emotional entries")
+                  }
+                >
+                  "Show me my most emotional entries"
+                </div>
+                <div
+                  className="text-xs p-2 rounded border border-border/30 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                  onClick={() =>
+                    handleSuggestionClick("What goals am I working towards?")
+                  }
+                >
+                  "What goals am I working towards?"
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -212,17 +247,11 @@ export function RagChat() {
                 message.role === "user" ? "justify-end" : "justify-start"
               }`}
             >
-              {message.role === "assistant" && (
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Bot className="w-4 h-4 text-primary" />
-                </div>
-              )}
-
               <div
                 className={`max-w-[85%] rounded-lg px-3 py-2 ${
                   message.role === "user"
                     ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground"
+                    : ""
                 }`}
               >
                 {message.role === "user" ? (
@@ -235,35 +264,6 @@ export function RagChat() {
                       content={message.content}
                       isStreaming={message.isStreaming}
                     />
-
-                    {/* Sources */}
-                    {message.sources && message.sources.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-border/50">
-                        <p className="text-xs font-medium text-muted-foreground mb-2">
-                          Sources from your journal:
-                        </p>
-                        <div className="space-y-2">
-                          {message.sources.slice(0, 3).map((source, index) => (
-                            <div
-                              key={source.id}
-                              className="text-xs bg-background/50 rounded p-2 border"
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-muted-foreground">
-                                  {formatDate(source.created_at)}
-                                </span>
-                                <span className="text-xs bg-primary/10 text-primary px-1 rounded">
-                                  {Math.round(source.relevance * 100)}% relevant
-                                </span>
-                              </div>
-                              <p className="text-foreground line-clamp-2">
-                                {source.content}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
                 <p className="text-xs opacity-70 mt-1">
@@ -273,12 +273,6 @@ export function RagChat() {
                   )}
                 </p>
               </div>
-
-              {message.role === "user" && (
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                  <User className="w-4 h-4 text-primary-foreground" />
-                </div>
-              )}
             </div>
           ))
         )}
@@ -286,9 +280,6 @@ export function RagChat() {
         {/* Loading indicator */}
         {isLoading && (
           <div className="flex gap-3 justify-start">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <Bot className="w-4 h-4 text-primary" />
-            </div>
             <div className="bg-muted rounded-lg px-3 py-2">
               <div className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -305,26 +296,19 @@ export function RagChat() {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t bg-background">
-        <div className="flex gap-2">
-          <input
+      <form onSubmit={handleSubmit} className="p-4 bg-background flex-shrink-0">
+        <div className="flex-1 gap-2">
+          <Input
+            ref={inputRef}
             type="text"
+            className="w-full"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about your journal entries..."
-            className="flex-1 px-3 py-2 border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             disabled={isLoading}
           />
-          <Button
-            type="submit"
-            size="sm"
-            disabled={isLoading || !input.trim()}
-            className="px-4"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-xs text-muted-foreground mt-2 opacity-70">
           AI analyzes your journal entries to provide personalized insights
         </p>
       </form>

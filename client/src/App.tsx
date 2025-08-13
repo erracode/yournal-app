@@ -1,16 +1,13 @@
-import { useState } from "react"
 import { useUser, useSignOut } from "@/lib/auth-hooks"
 import { AuthForm } from "@/components/auth/AuthForm"
 import { RichTextJournal } from "@/components/journal/RichTextJournal"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
-import { BookOpen, MessageSquare, LogOut } from "lucide-react"
-import { RagChat } from "./components/ai/RagChat"
+import { BookOpen, LogOut } from "lucide-react"
 
 function App() {
   const { data: user, isLoading } = useUser()
   const signOutMutation = useSignOut()
-  const [view, setView] = useState<"journal" | "rag">("journal")
 
   const handleSignOut = async () => {
     try {
@@ -34,31 +31,15 @@ function App() {
 
   return (
     <div className="h-screen bg-background flex flex-col">
-      {/* Minimal Navigation */}
-      <div className="flex items-center justify-between px-4 py-2 border-b">
-        <div className="flex items-center gap-1">
-          <Button
-            variant={view === "journal" ? "default" : "ghost"}
-            onClick={() => setView("journal")}
-            size="sm"
-            className="h-8 px-3 text-xs"
-          >
-            <BookOpen className="w-3 h-3 mr-1" />
-            Journal
-          </Button>
-          <Button
-            variant={view === "rag" ? "default" : "ghost"}
-            onClick={() => setView("rag")}
-            size="sm"
-            className="h-8 px-3 text-xs"
-          >
-            <MessageSquare className="w-3 h-3 mr-1" />
-            AI Chat
-          </Button>
+      {/* Minimal Header */}
+      <div className="flex items-center justify-between px-3 py-1.5 border-b/50">
+        <div className="flex items-center gap-0.5">
+          <BookOpen className="w-3 h-3 text-primary" />
+          <span className="text-xs font-medium text-foreground">yournal</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground/70">
             {user.user_metadata?.full_name || user.email}
           </span>
           <ThemeToggle />
@@ -67,7 +48,7 @@ function App() {
             size="sm"
             onClick={handleSignOut}
             disabled={signOutMutation.isPending}
-            className="h-8 px-2"
+            className="h-7 w-7 p-0"
           >
             <LogOut className="w-3 h-3" />
           </Button>
@@ -76,7 +57,7 @@ function App() {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {view === "journal" ? <RichTextJournal /> : <RagChat />}
+        <RichTextJournal />
       </div>
     </div>
   )

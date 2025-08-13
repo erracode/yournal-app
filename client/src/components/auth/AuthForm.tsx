@@ -100,7 +100,7 @@ export function AuthForm() {
             type="submit"
             disabled={isLoading}
             className="w-full "
-            variant="default"
+            variant="gradient"
             size={"sm"}
           >
             {isLoading ? "Loading..." : isSignUp ? "Create Account" : "Sign In"}

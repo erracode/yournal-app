@@ -1,5 +1,12 @@
 import { useState, useRef, useEffect } from "react"
-import { BookOpen, X, Edit2, Loader2 } from "lucide-react"
+import {
+  BookOpen,
+  X,
+  Edit2,
+  Loader2,
+  Sparkles,
+  MessageSquare,
+} from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import { useIntersectionObserver, useDebounce } from "@uidotdev/usehooks"
 import { useUser } from "@/lib/auth-hooks"
@@ -12,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { YooptaEntryEditor } from "./YooptaEntryEditor"
 import { YooptaContentRenderer } from "./YooptaContentRenderer"
+import { RagChat } from "../ai/RagChat"
 import type { Entry } from "@/lib/entries-hooks"
 
 export function RichTextJournal() {
@@ -39,6 +47,7 @@ export function RichTextJournal() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [autoSave, setAutoSave] = useState(false) // Disabled by default
+  const [showChat, setShowChat] = useState(false)
   const historyRef = useRef<HTMLDivElement>(null)
 
   // Intersection Observer for infinite scroll
@@ -63,6 +72,24 @@ export function RichTextJournal() {
   // Track last fetch time to prevent rapid successive calls
   const lastFetchTimeRef = useRef<number>(0)
   const FETCH_COOLDOWN = 1000 // 1 second cooldown between fetches
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + K to toggle chat
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault()
+        setShowChat((prev) => !prev)
+      }
+      // Escape to close chat
+      if (e.key === "Escape" && showChat) {
+        setShowChat(false)
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [showChat])
 
   // Trigger infinite scroll when intersection observer detects the load more element
   useEffect(() => {
@@ -133,7 +160,7 @@ export function RichTextJournal() {
       }
 
       // Small delay to ensure the new entry is rendered
-      setTimeout(scrollToJournalCreation, 50)
+      setTimeout(scrollToJournalCreation, 100)
     }
   }, [allEntries.length, entriesData?.pages.length])
 
@@ -143,11 +170,12 @@ export function RichTextJournal() {
     setIsSaving(true)
 
     try {
-      // Save the entry (TanStack Query handles optimistic updates)
+      // Save the entry
       await createEntryMutation.mutateAsync({
         content: entryContent,
         textContent,
       })
+
       setLastSaved(new Date())
     } catch (error) {
       console.error("Error saving entry:", error)
@@ -261,173 +289,246 @@ export function RichTextJournal() {
         </div>
       )}
 
-      {/* Main Content - Full Scrollable Area */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-6 py-6">
-          <div ref={historyRef} className="space-y-8">
-            {/* Intersection Observer Target - Load More Trigger (at the top) */}
-            {hasNextPage && (
-              <div
-                ref={loadMoreRef}
-                className="h-4 w-full"
-                aria-hidden="true"
-              />
-            )}
+      {/* Main Content - 3 Column Grid Layout */}
+      <main className="flex-1 overflow-hidden">
+        <div className="grid grid-cols-3 gap-6 h-full">
+          {/* Left Column - Empty for now */}
+          <div className="col-span-1"></div>
 
-            <AnimatePresence>
-              {entriesLoading ? (
-                <motion.div
-                  key="loading-state"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-center text-muted-foreground py-8"
-                >
-                  <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
-                  <p className="text-sm">Loading entries...</p>
-                </motion.div>
-              ) : allEntries.length === 0 ? (
-                <motion.div
-                  key="empty-state"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-center text-muted-foreground py-8"
-                >
-                  <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No entries yet</p>
-                  <p className="text-xs">
-                    Start writing to see your journal history
-                  </p>
-                </motion.div>
-              ) : (
-                // Show entries in chronological order (oldest first, from backend)
-                allEntries.map((entry: Entry) => (
+          {/* Center Column - Journal Content */}
+          <div className="col-span-1 px-6 py-6 overflow-y-auto scrollbar-thin">
+            <div ref={historyRef} className="space-y-1">
+              {/* Intersection Observer Target - Load More Trigger (at the top) */}
+              {hasNextPage && (
+                <div
+                  ref={loadMoreRef}
+                  className="h-4 w-full"
+                  aria-hidden="true"
+                />
+              )}
+
+              <AnimatePresence>
+                {entriesLoading ? (
                   <motion.div
-                    key={entry.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                    className="group"
+                    key="loading-state"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-center text-muted-foreground py-8"
                   >
-                    <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex justify-between items-center">
-                      <span>{formatDate(entry.created_at)}</span>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => handleEditEntry(entry)}
-                          className="p-1 rounded hover:bg-muted transition-colors"
-                          title="Edit entry"
-                        >
-                          <Edit2 className="w-3 h-3 text-muted-foreground" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDeleteEntry(entry.id)
-                          }}
-                          className="p-1 rounded hover:bg-muted transition-colors hover:text-red-600"
-                          title="Delete entry"
-                        >
-                          <X className="w-3 h-3 text-muted-foreground" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {editingId === entry.id ? (
-                      <div className="mt-2">
-                        <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
-                          <span>Editing entry</span>
+                    <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                    <p className="text-sm">Loading entries...</p>
+                  </motion.div>
+                ) : allEntries.length === 0 ? (
+                  <motion.div
+                    key="empty-state"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-center text-muted-foreground py-8"
+                  >
+                    <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No entries yet</p>
+                    <p className="text-xs">
+                      Start writing to see your journal history
+                    </p>
+                  </motion.div>
+                ) : (
+                  // Show entries in chronological order (oldest first, from backend)
+                  allEntries.map((entry: Entry) => (
+                    <motion.div
+                      key={entry.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="group journal-entry"
+                    >
+                      <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <span>{formatDate(entry.created_at)}</span>
                           <span className="text-xs opacity-60">
-                            (⌘+Enter to save, Esc to cancel)
+                            (double-click to edit)
                           </span>
                         </div>
-                        <YooptaEntryEditor
-                          initialContent={editingContent}
-                          onSubmit={handleUpdateEntry}
-                          isEditing
-                          onCancel={handleCancelEdit}
-                          isLoading={updateEntryMutation.isPending}
-                          placeholder="Edit your entry..."
-                        />
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleEditEntry(entry)}
+                            className="p-1 rounded hover:bg-muted transition-colors"
+                            title="Edit entry (or double-click the text)"
+                          >
+                            <Edit2 className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteEntry(entry.id)
+                            }}
+                            className="p-1 rounded hover:bg-muted transition-colors hover:text-red-600"
+                            title="Delete entry"
+                          >
+                            <X className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                        </div>
                       </div>
-                    ) : (
-                      <div
-                        className="text-foreground leading-relaxed cursor-pointer hover:bg-muted/50 rounded p-2 -m-2 transition-colors"
-                        onClick={() => handleEditEntry(entry)}
-                      >
-                        <YooptaContentRenderer
-                          content={entry.content}
-                          //   className="text-foreground"
-                        />
-                      </div>
-                    )}
-                  </motion.div>
-                ))
+
+                      {editingId === entry.id ? (
+                        <div className="mt-2">
+                          <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
+                            <span>Editing entry</span>
+                            <span className="text-xs opacity-60">
+                              (⌘+Enter to save, Esc to cancel)
+                            </span>
+                          </div>
+                          <YooptaEntryEditor
+                            initialContent={editingContent}
+                            onSubmit={handleUpdateEntry}
+                            isEditing
+                            onCancel={handleCancelEdit}
+                            isLoading={updateEntryMutation.isPending}
+                            placeholder="Edit your entry..."
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className="text-foreground leading-relaxed cursor-text rounded p-2 -m-2 transition-all duration-500 relative group/entry hover:bg-muted/20"
+                          onDoubleClick={() => handleEditEntry(entry)}
+                          title="Double-click to edit"
+                        >
+                          <YooptaContentRenderer
+                            content={entry.content}
+                            //   className="text-foreground"
+                          />
+
+                          {/* Bottom gradient effect on hover */}
+                          <span className="absolute inset-x-0 -bottom-px block h-px w-full journal-entry-gradient opacity-0 transition duration-500 group-hover/entry:opacity-100" />
+                          <span className="absolute inset-x-4 -bottom-px mx-auto block h-px w-1/2 journal-entry-gradient-blur opacity-0 transition duration-500 group-hover/entry:opacity-100" />
+                        </div>
+                      )}
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
+
+              {/* Infinite Scroll Loading Indicator */}
+              {isFetchingNextPage && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-4"
+                >
+                  <Loader2 className="w-6 h-6 mx-auto animate-spin text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Loading more entries...
+                  </p>
+                </motion.div>
               )}
-            </AnimatePresence>
-
-            {/* Infinite Scroll Loading Indicator */}
-            {isFetchingNextPage && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-4"
-              >
-                <Loader2 className="w-6 h-6 mx-auto animate-spin text-muted-foreground" />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Loading more entries...
-                </p>
-              </motion.div>
-            )}
-          </div>
-
-          {/* Writing Section - Rich Text Editor */}
-          <div className="mt-6" data-section="writing">
-            <div className="relative">
-              <YooptaEntryEditor
-                onSubmit={handleSaveEntry}
-                isLoading={isSaving}
-                placeholder="What's on your mind today?"
-              />
             </div>
 
-            {/* Status Bar */}
-            <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-4">
-                {isSaving && (
-                  <span className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                    Saving...
-                  </span>
-                )}
-                {lastSaved && !isSaving && (
-                  <span>Saved {lastSaved.toLocaleTimeString()}</span>
-                )}
+            {/* Writing Section - Rich Text Editor */}
+            <div className="mt-6" data-section="writing">
+              <div className="relative">
+                <YooptaEntryEditor
+                  onSubmit={handleSaveEntry}
+                  isLoading={isSaving}
+                  placeholder="What's on your mind today?"
+                />
               </div>
 
-              {/* Save Button */}
-              <Button
-                onClick={() => {
-                  // Trigger keyboard event to save
-                  const event = new KeyboardEvent("keydown", {
-                    key: "Enter",
-                    metaKey: true,
-                    bubbles: true,
-                  })
-                  document.dispatchEvent(event)
-                }}
-                disabled={isSaving}
-                size="sm"
-                variant="command"
-                // className="px-2 py-1 text-xs bg-muted hover:bg-muted/80 rounded transition-colors disabled:opacity-50"
-                title="Save entry (⌘+Enter)"
-              >
-                Save
-                <span className="ml-1 opacity-60">⌘+Enter</span>
-              </Button>
+              {/* Status Bar */}
+              <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-4">
+                  {isSaving && (
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                      Saving...
+                    </span>
+                  )}
+                  {lastSaved && !isSaving && (
+                    <span>Saved {lastSaved.toLocaleTimeString()}</span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Chat Button */}
+                  <Button
+                    onClick={() => setShowChat((prev) => !prev)}
+                    size="sm"
+                    variant="ghost"
+                    // variant="gradient"
+                    className="px-2 py-1 text-xs hover:bg-muted/50 transition-colors"
+                    title="Toggle AI Chat (Ctrl+K)"
+                  >
+                    <MessageSquare className="w-3 h-3 mr-1" />
+                    AI Chat
+                    <span className="ml-1 opacity-60">Ctrl+K</span>
+                  </Button>
+
+                  {/* Save Button */}
+                  <Button
+                    onClick={() => {
+                      // Trigger keyboard event to save
+                      const event = new KeyboardEvent("keydown", {
+                        key: "Enter",
+                        metaKey: true,
+                        bubbles: true,
+                      })
+                      // document.dispatchEvent(event)
+                    }}
+                    disabled={isSaving}
+                    size="sm"
+                    variant="gradient"
+                    // variant="command"
+                    // className="px-2 py-1 text-xs bg-muted hover:bg-muted/80 rounded transition-colors disabled:opacity-50"
+                    title="Save entry (⌘+Enter)"
+                  >
+                    Save
+                    <span className="ml-1 opacity-60">⌘+Enter</span>
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* Right Column - Chat Panel */}
+          <AnimatePresence>
+            {showChat && (
+              <motion.div
+                initial={{ x: "100%", opacity: 0, scale: 0.95 }}
+                animate={{ x: 0, opacity: 1, scale: 1 }}
+                exit={{ x: "100%", opacity: 0, scale: 0.95 }}
+                transition={{
+                  type: "spring",
+                  damping: 25,
+                  stiffness: 200,
+                  duration: 0.4,
+                }}
+                className="fixed right-0 top-0 w-96 max-w-[90vw] bg-background/95 backdrop-blur-sm h-[calc(100vh-3.5rem)] overflow-hidden z-50"
+              >
+                <div className="sticky top-0 p-4 bg-background/80 backdrop-blur-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium">AI Assistant</span>
+                      <span className="text-xs text-muted-foreground">
+                        (Ctrl+K)
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowChat(false)}
+                      className="h-6 w-6 p-0 hover:bg-muted/50"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="h-[calc(100%-4rem)] overflow-hidden">
+                  <RagChat />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </main>
     </div>

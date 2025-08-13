@@ -24,7 +24,7 @@ export function YooptaContentRenderer({
 
   return (
     <div
-      className={` opacity-[0.9] max-w-none text-base leading-relaxed ${className}`}
+      className={`journal-content opacity-[0.9] max-w-none text-base leading-relaxed ${className}`}
       // className={`prose prose-sm max-w-none text-base leading-relaxed ${className}`}
       dangerouslySetInnerHTML={{ __html: renderedContent }}
     />
@@ -121,6 +121,10 @@ function renderText(children: unknown[]): string {
       if (typedChild.text) {
         let text = typedChild.text
 
+        // Convert URLs and emails to clickable links
+        text = convertUrlsToLinks(text)
+        text = convertEmailsToLinks(text)
+
         if (typedChild.bold) {
           text = `<strong>${text}</strong>`
         }
@@ -140,6 +144,39 @@ function renderText(children: unknown[]): string {
       return ""
     })
     .join("")
+}
+
+// Function to convert URLs in text to clickable links
+function convertUrlsToLinks(text: string): string {
+  // Enhanced regex to match various URL patterns
+  // Matches: http://, https://, www., and common TLDs
+  const urlRegex =
+    /(https?:\/\/[^\s]+|www\.[^\s]+\.[^\s]+|[^\s]+\.[^\s]+\.[^\s]+)/g
+
+  return text.replace(urlRegex, (url) => {
+    // Ensure URLs have protocol
+    let fullUrl = url
+    if (url.startsWith("www.")) {
+      fullUrl = `https://${url}`
+    } else if (!url.startsWith("http")) {
+      // For URLs without protocol, assume https
+      fullUrl = `https://${url}`
+    }
+
+    // Create a safe link with target="_blank" and rel="noopener noreferrer"
+    // The styling will be handled by CSS classes
+    return `<a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${url}</a>`
+  })
+}
+
+// Function to convert email addresses to clickable mailto links
+function convertEmailsToLinks(text: string): string {
+  // Regex to match email addresses
+  const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g
+
+  return text.replace(emailRegex, (email) => {
+    return `<a href="mailto:${email}" class="email-link">${email}</a>`
+  })
 }
 
 function renderListItems(children: unknown[]): string {
