@@ -4,6 +4,8 @@ import { apiClient } from "@/lib/api"
 import { RichMessageRenderer } from "./RichMessageRenderer"
 import { Input } from "../ui/input"
 
+import { GlowingEffect } from "../ui/glowing-effect"
+
 interface Message {
   id: string
   role: "user" | "assistant"
@@ -174,68 +176,52 @@ export function RagChat() {
               writing
             </p>
 
-            {/* Suggestions section - prepared for clickable boxes */}
+            {/* Suggestions section - using Card components with GlowingEffect */}
             <div className="space-y-3">
               <p className="text-xs font-medium text-foreground">Try asking:</p>
-              <div className="grid grid-cols-1 gap-2 max-w-sm mx-auto">
-                <div
-                  className="text-xs p-2 rounded border border-border/30 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+              <div className="grid grid-cols-1 gap-3 max-w-md mx-auto">
+                <SuggestionCard
+                  text="What themes have I been writing about lately?"
                   onClick={() =>
                     handleSuggestionClick(
                       "What themes have I been writing about lately?"
                     )
                   }
-                >
-                  "What themes have I been writing about lately?"
-                </div>
-                <div
-                  className="text-xs p-2 rounded border border-border/30 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                />
+                <SuggestionCard
+                  text="Summarize my entries from this week"
                   onClick={() =>
                     handleSuggestionClick("Summarize my entries from this week")
                   }
-                >
-                  "Summarize my entries from this week"
-                </div>
-                <div
-                  className="text-xs p-2 rounded border border-border/30 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                />
+                <SuggestionCard
+                  text="Find entries where I mentioned work stress"
                   onClick={() =>
                     handleSuggestionClick(
                       "Find entries where I mentioned work stress"
                     )
                   }
-                >
-                  "Find entries where I mentioned work stress"
-                </div>
-                <div
-                  className="text-xs p-2 rounded border border-border/30 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                />
+                <SuggestionCard
+                  text="What patterns do you see in my journaling?"
                   onClick={() =>
                     handleSuggestionClick(
                       "What patterns do you see in my journaling?"
                     )
                   }
-                >
-                  "What patterns do you see in my journaling?"
-                </div>
-
-                {/* Additional space for future suggestions */}
-                <div className="h-4"></div>
-
-                <div
-                  className="text-xs p-2 rounded border border-border/30 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                />
+                <SuggestionCard
+                  text="Show me my most emotional entries"
                   onClick={() =>
                     handleSuggestionClick("Show me my most emotional entries")
                   }
-                >
-                  "Show me my most emotional entries"
-                </div>
-                <div
-                  className="text-xs p-2 rounded border border-border/30 bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer"
+                />
+                <SuggestionCard
+                  text="What goals am I working towards?"
                   onClick={() =>
                     handleSuggestionClick("What goals am I working towards?")
                   }
-                >
-                  "What goals am I working towards?"
-                </div>
+                />
               </div>
             </div>
           </div>
@@ -312,6 +298,36 @@ export function RagChat() {
           AI analyzes your journal entries to provide personalized insights
         </p>
       </form>
+    </div>
+  )
+}
+
+// SuggestionCard component with GlowingEffect
+interface SuggestionCardProps {
+  text: string
+  onClick: () => void
+}
+
+const SuggestionCard = ({ text, onClick }: SuggestionCardProps) => {
+  return (
+    <div className="relative h-12 rounded-lg border-2 p-1">
+      <GlowingEffect
+        spread={40}
+        glow={true}
+        disabled={false}
+        proximity={32}
+        inactiveZone={0.01}
+        borderWidth={2}
+      />
+      <div
+        className="border-0 relative flex h-full flex-col justify-center overflow-hidden rounded-lg p-2 cursor-pointer "
+        // className="border-0 relative flex h-full flex-col justify-center overflow-hidden rounded-lg p-2 cursor-pointer hover:bg-accent/50 transition-colors"
+        onClick={onClick}
+      >
+        <p className="text-xs text-center text-foreground leading-tight">
+          "{text}"
+        </p>
+      </div>
     </div>
   )
 }
