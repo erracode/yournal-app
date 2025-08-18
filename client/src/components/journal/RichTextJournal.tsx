@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { YooptaEntryEditor } from "./YooptaEntryEditor"
 import { YooptaContentRenderer } from "./YooptaContentRenderer"
 import { RagChat } from "../ai/RagChat"
+import { ExpandSuggestionPanel } from "./ExpandSuggestionPanel"
 import type { Entry } from "@/lib/entries-hooks"
 
 export function RichTextJournal() {
@@ -42,6 +43,11 @@ export function RichTextJournal() {
   // Editing state
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingContent, setEditingContent] = useState("")
+
+  // Panel state for Writing Assistant
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [panelEntryId, setPanelEntryId] = useState<number | null>(null)
+  const [panelEntryText, setPanelEntryText] = useState<string>("")
 
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
@@ -242,6 +248,91 @@ export function RichTextJournal() {
     }
   }
 
+  // Open the assistant panel for a specific entry
+  const openAssistForEntry = (entry: Entry) => {
+    const text =
+      entry.text_content ||
+      (typeof entry.content === "string" ? entry.content : "")
+    // Debug: log when user opens assistant for an entry
+    // This helps verify the button is wired and the panel will open
+    // eslint-disable-next-line no-console
+    console.log("[WritingAssistant] openAssistForEntry:", { entryId: entry.id })
+    setPanelEntryId(entry.id)
+    setPanelEntryText(text)
+    setPanelOpen(true)
+  }
+
+  // Insert suggestion into existing entry (uses updateEntryMutation)
+  const handleInsertSuggestion = async (
+    suggestion: string,
+    options?: { mode?: "append" | "replace" }
+  ) => {
+    if (!panelEntryId) return
+    const targetEntry = allEntries.find((e) => e.id === panelEntryId)
+    if (!targetEntry) return
+    const existing =
+      targetEntry.text_content ||
+      (typeof targetEntry.content === "string" ? targetEntry.content : "")
+    const newText =
+      options?.mode === "replace" ? suggestion : `${existing}\n\n${suggestion}`
+
+    // Build minimal Yoopta content object for storage (server expects JSONB)
+    const contentObj = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: newText,
+            },
+          ],
+        },
+      ],
+    }
+
+    try {
+      await updateEntryMutation.mutateAsync({
+        id: panelEntryId,
+        content: contentObj,
+        textContent: newText,
+      })
+      setPanelOpen(false)
+    } catch (err) {
+      console.error("Failed to insert suggestion:", err)
+    }
+  }
+
+  // Save suggestion as a new entry
+  const handleSaveSuggestionAsNew = async (suggestion: string) => {
+    // Build minimal content object for new entry
+    const contentObj = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: suggestion,
+            },
+          ],
+        },
+      ],
+    }
+
+    try {
+      await createEntryMutation.mutateAsync({
+        content: contentObj,
+        textContent: suggestion,
+      })
+      setPanelOpen(false)
+    } catch (err) {
+      console.error("Failed to save suggestion as new entry:", err)
+    }
+  }
+
   if (userLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center">
@@ -341,10 +432,18 @@ export function RichTextJournal() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="group journal-entry"
+                      className="group journal-entry relative"
                     >
                       <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex justify-between items-center">
                         <div className="flex items-center gap-2">
+                          <span
+                            className={
+                              panelOpen && panelEntryId === entry.id
+                                ? "w-2 h-2 rounded-full mr-2 bg-primary inline-block"
+                                : "w-2 h-2 rounded-full mr-2 bg-transparent inline-block"
+                            }
+                            aria-hidden="true"
+                          />
                           <span>{formatDate(entry.created_at)}</span>
                           <span className="text-xs opacity-60">
                             (double-click to edit)
@@ -367,6 +466,16 @@ export function RichTextJournal() {
                             title="Delete entry"
                           >
                             <X className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openAssistForEntry(entry)
+                            }}
+                            className="p-1 rounded hover:bg-muted transition-colors"
+                            title="Open Writing Assistant"
+                          >
+                            <Sparkles className="w-3 h-3 text-muted-foreground" />
                           </button>
                         </div>
                       </div>
@@ -466,19 +575,11 @@ export function RichTextJournal() {
                   {/* Save Button */}
                   <Button
                     onClick={() => {
-                      // Trigger keyboard event to save
-                      const event = new KeyboardEvent("keydown", {
-                        key: "Enter",
-                        metaKey: true,
-                        bubbles: true,
-                      })
-                      // document.dispatchEvent(event)
+                      // No-op here — saving is handled inside the YooptaEntryEditor via keyboard shortcut (⌘+Enter)
                     }}
                     disabled={isSaving}
                     size="sm"
                     variant="gradient"
-                    // variant="command"
-                    // className="px-2 py-1 text-xs bg-muted hover:bg-muted/80 rounded transition-colors disabled:opacity-50"
                     title="Save entry (⌘+Enter)"
                   >
                     Save
@@ -526,6 +627,33 @@ export function RichTextJournal() {
                 <div className="h-[calc(100%-4rem)] overflow-hidden">
                   <RagChat />
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Writing Assistant Panel (animated like Chat panel) */}
+          <AnimatePresence>
+            {panelOpen && (
+              <motion.div
+                initial={{ x: "100%", opacity: 0, scale: 0.95 }}
+                animate={{ x: 0, opacity: 1, scale: 1 }}
+                exit={{ x: "100%", opacity: 0, scale: 0.95 }}
+                transition={{
+                  type: "spring",
+                  damping: 25,
+                  stiffness: 200,
+                  duration: 0.4,
+                }}
+                className="fixed right-0 top-0 h-full w-[380px] max-w-[90vw] bg-background"
+              >
+                <ExpandSuggestionPanel
+                  entryId={panelEntryId ?? 0}
+                  entryText={panelEntryText}
+                  open={panelOpen}
+                  onClose={() => setPanelOpen(false)}
+                  onInsert={handleInsertSuggestion}
+                  onSaveAsNew={handleSaveSuggestionAsNew}
+                />
               </motion.div>
             )}
           </AnimatePresence>
