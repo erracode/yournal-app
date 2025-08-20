@@ -262,77 +262,6 @@ export function RichTextJournal() {
     setPanelOpen(true)
   }
 
-  // Insert suggestion into existing entry (uses updateEntryMutation)
-  const handleInsertSuggestion = async (
-    suggestion: string,
-    options?: { mode?: "append" | "replace" }
-  ) => {
-    if (!panelEntryId) return
-    const targetEntry = allEntries.find((e) => e.id === panelEntryId)
-    if (!targetEntry) return
-    const existing =
-      targetEntry.text_content ||
-      (typeof targetEntry.content === "string" ? targetEntry.content : "")
-    const newText =
-      options?.mode === "replace" ? suggestion : `${existing}\n\n${suggestion}`
-
-    // Build minimal Yoopta content object for storage (server expects JSONB)
-    const contentObj = {
-      type: "doc",
-      content: [
-        {
-          type: "paragraph",
-          content: [
-            {
-              type: "text",
-              text: newText,
-            },
-          ],
-        },
-      ],
-    }
-
-    try {
-      await updateEntryMutation.mutateAsync({
-        id: panelEntryId,
-        content: contentObj,
-        textContent: newText,
-      })
-      setPanelOpen(false)
-    } catch (err) {
-      console.error("Failed to insert suggestion:", err)
-    }
-  }
-
-  // Save suggestion as a new entry
-  const handleSaveSuggestionAsNew = async (suggestion: string) => {
-    // Build minimal content object for new entry
-    const contentObj = {
-      type: "doc",
-      content: [
-        {
-          type: "paragraph",
-          content: [
-            {
-              type: "text",
-              text: suggestion,
-            },
-          ],
-        },
-      ],
-    }
-
-    try {
-      await createEntryMutation.mutateAsync({
-        content: contentObj,
-        textContent: suggestion,
-      })
-      setPanelOpen(false)
-    } catch (err) {
-      console.error("Failed to save suggestion as new entry:", err)
-    }
-  }
-
   if (userLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center">
@@ -434,7 +363,7 @@ export function RichTextJournal() {
                       transition={{ duration: 0.3, ease: "easeOut" }}
                       className="group journal-entry relative"
                     >
-                      <div className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex justify-between items-center">
+                      <div className="text-xs text-muted-foreground flex justify-between items-center">
                         <div className="flex items-center gap-2">
                           <span
                             className={
@@ -444,12 +373,26 @@ export function RichTextJournal() {
                             }
                             aria-hidden="true"
                           />
-                          <span>{formatDate(entry.created_at)}</span>
-                          <span className="text-xs opacity-60">
-                            (double-click to edit)
-                          </span>
+                          <div
+                            className={`transition-opacity duration-200 ${
+                              panelOpen && panelEntryId === entry.id
+                                ? "opacity-100"
+                                : "opacity-0 group-hover:opacity-100"
+                            }`}
+                          >
+                            <span>{formatDate(entry.created_at)}</span>
+                            <span className="text-xs opacity-60">
+                              (double-click to edit)
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex gap-1">
+                        <div
+                          className={`flex gap-1 transition-opacity duration-200 ${
+                            panelOpen && panelEntryId === entry.id
+                              ? "opacity-100"
+                              : "opacity-0 group-hover:opacity-100"
+                          }`}
+                        >
                           <button
                             onClick={() => handleEditEntry(entry)}
                             className="p-1 rounded hover:bg-muted transition-colors"
@@ -651,8 +594,6 @@ export function RichTextJournal() {
                   entryText={panelEntryText}
                   open={panelOpen}
                   onClose={() => setPanelOpen(false)}
-                  onInsert={handleInsertSuggestion}
-                  onSaveAsNew={handleSaveSuggestionAsNew}
                 />
               </motion.div>
             )}

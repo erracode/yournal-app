@@ -320,6 +320,55 @@ Your role is to:
 
 
 
+// Generate AI suggestions for journal entries
+ai.post('/suggestions', authMiddleware, async (c) => {
+    try {
+        const { entryText, entryId, context } = await c.req.json()
+        const user = c.get('user')
+
+        if (!entryText || !entryId) {
+            return c.json({ error: 'Missing entryText or entryId' }, 400)
+        }
+
+        // Create a prompt for generating suggestions
+        const prompt = `You are a helpful writing assistant. The user has written a journal entry and wants a direct, expanded version.
+
+Original Entry:
+"${entryText}"
+
+${context ? `Additional Context from User:
+"${context}"
+
+` : ''}Provide a direct, expanded version of this entry that:
+1. Maintains the original tone and intent
+2. Adds relevant context and detail (but don't over-explain)
+3. Uses clear, engaging language
+4. Is structured well with proper paragraphs
+5. Stays true to the user's voice and style
+6. Is approximately 1.5-2x the length of the original (not excessively long)
+${context ? '7. Incorporates the user\'s additional context appropriately' : ''}
+
+IMPORTANT: Give the expanded version directly without any conversational text like "Here's an expanded version:" or "I hope this helps". Just provide the expanded content.`
+
+        const response = await requestyClient.createChatCompletion([
+            { role: 'system', content: 'You are a writing assistant that expands journal entries. Always provide direct, expanded content without conversational text or explanations.' },
+            { role: 'user', content: prompt }
+        ], { maxTokens: 300 })
+
+        if (response && response.choices && response.choices[0]?.message?.content) {
+            return c.json({
+                suggestion: response.choices[0].message.content,
+                entryId: entryId
+            })
+        } else {
+            throw new Error('No response from AI service')
+        }
+    } catch (error) {
+        console.error('Suggestion generation error:', error)
+        return c.json({ error: 'Failed to generate suggestion' }, 500)
+    }
+})
+
 // Health check for AI service
 ai.get('/health', async (c) => {
     try {

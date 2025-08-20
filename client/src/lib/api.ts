@@ -164,6 +164,14 @@ class ApiClient {
 
         return response.body
     }
+
+    // Generate AI suggestions for journal entries
+    async generateSuggestion(entryText: string, entryId: number, context?: string) {
+        return this.request('/ai/suggestions', {
+            method: 'POST',
+            body: JSON.stringify({ entryText, entryId, context }),
+        })
+    }
 }
 
 export const apiClient = new ApiClient() 
