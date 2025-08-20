@@ -355,7 +355,7 @@ IMPORTANT: Give the expanded version directly without any conversational text li
             { role: 'user', content: prompt }
         ], { maxTokens: 300 })
 
-        if (response && response.choices && response.choices[0]?.message?.content) {
+        if (response && 'choices' in response && response.choices && response.choices[0]?.message?.content) {
             return c.json({
                 suggestion: response.choices[0].message.content,
                 entryId: entryId
@@ -377,7 +377,7 @@ ai.get('/health', async (c) => {
             { role: 'user', content: 'Hello' }
         ], { maxTokens: 10 })
 
-        if (response) {
+        if (response && 'choices' in response) {
             return c.json({ status: 'healthy', service: 'requesty' })
         } else {
             return c.json({ status: 'unhealthy', service: 'requesty' }, 503)

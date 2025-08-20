@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { Loader2 } from "lucide-react"
 import { apiClient } from "@/lib/api"
-import { RichMessageRenderer } from "./RichMessageRenderer"
 import { Input } from "../ui/input"
 
 import { GlowingEffect } from "../ui/glowing-effect"
@@ -20,7 +19,12 @@ interface Message {
   }>
 }
 
-export function RagChat() {
+interface RagChatProps {
+  open: boolean
+  onClose: () => void
+}
+
+export function RagChat({ open, onClose }: RagChatProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -162,142 +166,176 @@ export function RagChat() {
     inputRef.current?.focus()
   }
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-        {messages.length === 0 ? (
-          <div className="text-center text-muted-foreground py-8">
-            <p className="text-sm font-medium mb-2">
-              Ask me about your journal entries
-            </p>
-            <p className="text-xs opacity-70 mb-6">
-              I can help you analyze, summarize, or find patterns in your
-              writing
-            </p>
+  if (!open) return null
 
-            {/* Suggestions section - using Card components with GlowingEffect */}
-            <div className="space-y-3">
-              <p className="text-xs font-medium text-foreground">Try asking:</p>
-              <div className="grid grid-cols-1 gap-3 max-w-md mx-auto">
-                <SuggestionCard
-                  text="What themes have I been writing about lately?"
-                  onClick={() =>
-                    handleSuggestionClick(
-                      "What themes have I been writing about lately?"
-                    )
-                  }
-                />
-                <SuggestionCard
-                  text="Summarize my entries from this week"
-                  onClick={() =>
-                    handleSuggestionClick("Summarize my entries from this week")
-                  }
-                />
-                <SuggestionCard
-                  text="Find entries where I mentioned work stress"
-                  onClick={() =>
-                    handleSuggestionClick(
-                      "Find entries where I mentioned work stress"
-                    )
-                  }
-                />
-                <SuggestionCard
-                  text="What patterns do you see in my journaling?"
-                  onClick={() =>
-                    handleSuggestionClick(
-                      "What patterns do you see in my journaling?"
-                    )
-                  }
-                />
-                <SuggestionCard
-                  text="Show me my most emotional entries"
-                  onClick={() =>
-                    handleSuggestionClick("Show me my most emotional entries")
-                  }
-                />
-                <SuggestionCard
-                  text="What goals am I working towards?"
-                  onClick={() =>
-                    handleSuggestionClick("What goals am I working towards?")
-                  }
-                />
+  return (
+    <div className="fixed right-0 top-0 h-[calc(100vh-3.5rem)] w-[380px] max-w-[90vw] bg-background/95 backdrop-blur-sm overflow-hidden border-l border-border/50">
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-border/50">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">Journal Assistant</span>
+            <span className="text-xs text-muted-foreground">
+              Ask questions about your entries
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setMessages([])}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Clear
+            </button>
+            <button
+              onClick={onClose}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+          {messages.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              <p className="text-sm font-medium mb-2">
+                Ask me about your journal entries
+              </p>
+              <p className="text-xs opacity-70 mb-6">
+                I can help you analyze, summarize, or find patterns in your
+                writing
+              </p>
+
+              {/* Suggestions section - using Card components with GlowingEffect */}
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-foreground">
+                  Try asking:
+                </p>
+                <div className="grid grid-cols-1 gap-3 max-w-md mx-auto">
+                  <SuggestionCard
+                    text="What themes have I been writing about lately?"
+                    onClick={() =>
+                      handleSuggestionClick(
+                        "What themes have I been writing about lately?"
+                      )
+                    }
+                  />
+                  <SuggestionCard
+                    text="Summarize my entries from this week"
+                    onClick={() =>
+                      handleSuggestionClick(
+                        "Summarize my entries from this week"
+                      )
+                    }
+                  />
+                  <SuggestionCard
+                    text="Find entries where I mentioned work stress"
+                    onClick={() =>
+                      handleSuggestionClick(
+                        "Find entries where I mentioned work stress"
+                      )
+                    }
+                  />
+                  <SuggestionCard
+                    text="What patterns do you see in my journaling?"
+                    onClick={() =>
+                      handleSuggestionClick(
+                        "What patterns do you see in my journaling?"
+                      )
+                    }
+                  />
+                  <SuggestionCard
+                    text="Show me my most emotional entries"
+                    onClick={() =>
+                      handleSuggestionClick("Show me my most emotional entries")
+                    }
+                  />
+                  <SuggestionCard
+                    text="What goals am I working towards?"
+                    onClick={() =>
+                      handleSuggestionClick("What goals am I working towards?")
+                    }
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex gap-3 ${
-                message.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
+          ) : (
+            messages.map((message) => (
               <div
-                className={`max-w-[85%] rounded-lg px-3 py-2 ${
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : ""
+                key={message.id}
+                className={`flex gap-3 ${
+                  message.role === "user" ? "justify-end" : "justify-start"
                 }`}
               >
-                {message.role === "user" ? (
-                  <p className="text-sm whitespace-pre-wrap">
-                    {message.content}
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    <RichMessageRenderer
-                      content={message.content}
-                      isStreaming={message.isStreaming}
-                    />
-                  </div>
-                )}
-                <p className="text-xs opacity-70 mt-1">
-                  {formatTime(message.timestamp)}
-                  {message.isStreaming && (
-                    <span className="ml-2 text-primary">typing...</span>
+                <div
+                  className={`max-w-[85%] rounded-lg px-3 py-2 ${
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : ""
+                  }`}
+                >
+                  {message.role === "user" ? (
+                    <p className="text-sm whitespace-pre-wrap">
+                      {message.content}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm whitespace-pre-wrap">
+                        {message.content}
+                      </p>
+                    </div>
                   )}
-                </p>
+                  <p className="text-xs opacity-70 mt-1">
+                    {formatTime(message.timestamp)}
+                    {message.isStreaming && (
+                      <span className="ml-2 text-primary">typing...</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="flex gap-3 justify-start">
+              <div className="bg-muted rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">
+                    Searching your journal...
+                  </span>
+                </div>
               </div>
             </div>
-          ))
-        )}
+          )}
 
-        {/* Loading indicator */}
-        {isLoading && (
-          <div className="flex gap-3 justify-start">
-            <div className="bg-muted rounded-lg px-3 py-2">
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm text-muted-foreground">
-                  Searching your journal...
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Auto-scroll target */}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 bg-background flex-shrink-0">
-        <div className="flex-1 gap-2">
-          <Input
-            ref={inputRef}
-            type="text"
-            className="w-full"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about your journal entries..."
-            disabled={isLoading}
-          />
+          {/* Auto-scroll target */}
+          <div ref={messagesEndRef} />
         </div>
-        <p className="text-xs text-muted-foreground mt-2 opacity-70">
-          AI analyzes your journal entries to provide personalized insights
-        </p>
-      </form>
+
+        {/* Input */}
+        <form
+          onSubmit={handleSubmit}
+          className="p-4 bg-background flex-shrink-0"
+        >
+          <div className="flex-1 gap-2">
+            <Input
+              ref={inputRef}
+              type="text"
+              className="w-full"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about your journal entries..."
+              disabled={isLoading}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-2 opacity-70">
+            AI analyzes your journal entries to provide personalized insights
+          </p>
+        </form>
+      </div>
     </div>
   )
 }

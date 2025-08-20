@@ -7,6 +7,26 @@ export interface RequestyConfig {
     model?: string
 }
 
+export interface ChatCompletionResponse {
+    id: string
+    object: string
+    created: number
+    model: string
+    choices: Array<{
+        index: number
+        message: {
+            role: string
+            content: string
+        }
+        finish_reason: string
+    }>
+    usage: {
+        prompt_tokens: number
+        completion_tokens: number
+        total_tokens: number
+    }
+}
+
 export class RequestyClient {
     private config: RequestyConfig
 
@@ -19,7 +39,7 @@ export class RequestyClient {
         stream?: boolean
         temperature?: number
         maxTokens?: number
-    }) {
+    }): Promise<ChatCompletionResponse | Response> {
         const model = options?.model || this.config.model || 'openai/gpt-4o'
 
         const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
@@ -48,7 +68,7 @@ export class RequestyClient {
             return response
         }
 
-        return response.json()
+        return response.json() as Promise<ChatCompletionResponse>
     }
 
     async createStreamingChatCompletion(messages: Array<{ role: string; content: string }>, options?: {

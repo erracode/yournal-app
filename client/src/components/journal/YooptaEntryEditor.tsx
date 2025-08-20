@@ -230,7 +230,7 @@ export function YooptaEntryEditor({
         <div className="flex gap-2 justify-end">
           <Button
             type="button"
-            variant="command"
+            variant="outline"
             size="sm"
             onClick={handleCancel}
             disabled={isLoading}
