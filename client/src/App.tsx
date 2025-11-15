@@ -1,7 +1,7 @@
 import { useUser } from "@/lib/auth-hooks"
 import { AuthForm } from "@/components/auth/AuthForm"
 import { AppLayout } from "@/components/layout/AppLayout"
-import { RichTextJournal } from "@/components/journal/RichTextJournal"
+import { MemoryWorkspace } from "@/components/memory/MemoryWorkspace"
 
 function App() {
   const { data: user, isLoading } = useUser()
@@ -20,7 +20,7 @@ function App() {
 
   return (
     <AppLayout>
-      <RichTextJournal />
+      <MemoryWorkspace />
     </AppLayout>
   )
 }

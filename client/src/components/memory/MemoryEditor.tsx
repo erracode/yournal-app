@@ -8,7 +8,7 @@ import Blockquote from "@yoopta/blockquote"
 import { plainText } from "@yoopta/exports"
 import { Button } from "@/components/ui/button"
 
-interface YooptaEntryEditorProps {
+interface MemoryEditorProps {
   onSubmit: (content: YooptaContentValue, textContent: string) => Promise<void>
   initialContent?: string
   isEditing?: boolean
@@ -17,7 +17,7 @@ interface YooptaEntryEditorProps {
   placeholder?: string
 }
 
-export function YooptaEntryEditor({
+export function MemoryEditor({
   onSubmit,
   initialContent = "",
   isEditing = false,
@@ -185,7 +185,7 @@ export function YooptaEntryEditor({
   // Keyboard shortcut handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+Enter to save (works for both new entries and editing)
+      // Cmd+Enter to save (works for both new memories and editing)
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
         e.preventDefault()
         // Create a synthetic form event

@@ -2,14 +2,14 @@ import { useRef, useEffect, useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { useIntersectionObserver, useDebounce } from "@uidotdev/usehooks"
 import { BookOpen, X, Edit2, Loader2, Sparkles } from "lucide-react"
-import { YooptaContentRenderer } from "./YooptaContentRenderer"
-import { YooptaEntryEditor } from "./YooptaEntryEditor"
+import { MemoryRenderer } from "./MemoryRenderer"
+import { MemoryEditor } from "./MemoryEditor"
 import { useUIStore } from "@/stores/ui-store"
 import { useUpdateEntry } from "@/lib/entries-hooks"
 import type { Entry } from "@/lib/entries-hooks"
 import type { YooptaContentValue } from "@yoopta/editor"
 
-interface EntriesListProps {
+interface MemoryListProps {
   entries: Entry[]
   isLoading: boolean
   isFetchingNextPage: boolean
@@ -19,7 +19,7 @@ interface EntriesListProps {
   onDeleteEntry: (id: number) => void
 }
 
-export function EntriesList({
+export function MemoryList({
   entries,
   isLoading,
   isFetchingNextPage,
@@ -84,7 +84,7 @@ export function EntriesList({
   // Track if we've already triggered a fetch to prevent duplicates
   const [hasTriggeredFetch, setHasTriggeredFetch] = useState(false)
 
-  // Track if we're loading older pages (not new entries)
+          // Track if we're loading older pages (not new memories)
   const [isLoadingOlderPages, setIsLoadingOlderPages] = useState(false)
 
   // Track last fetch time to prevent rapid successive calls
@@ -135,7 +135,7 @@ export function EntriesList({
     }
   }, [isFetchingNextPage, isLoadingOlderPages])
 
-  // Scroll to journal creation area when new entries are added (only on page 1)
+          // Scroll to memory creation area when new memories are added (only on page 1)
   useEffect(() => {
     if (entries.length > 0 && historyRef.current) {
       const scrollToJournalCreation = () => {
@@ -203,7 +203,7 @@ export function EntriesList({
             className="text-center text-muted-foreground py-8"
           >
             <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
-            <p className="text-sm">Loading entries...</p>
+            <p className="text-sm">Loading memories...</p>
           </motion.div>
         ) : entries.length === 0 ? (
           <motion.div
@@ -214,11 +214,11 @@ export function EntriesList({
             className="text-center text-muted-foreground py-8"
           >
             <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No entries yet</p>
-            <p className="text-xs">Start writing to see your journal history</p>
+            <p className="text-sm">No memories yet</p>
+                          <p className="text-xs">Start writing to see your memory history</p>
           </motion.div>
         ) : (
-          // Show entries in chronological order (oldest first, from backend)
+                      // Show memories in chronological order (oldest first, from backend)
           entries.map((entry: Entry) => (
             <motion.div
               key={entry.id}
@@ -263,7 +263,7 @@ export function EntriesList({
                   <button
                     onClick={() => handleEditEntry(entry)}
                     className="p-1 rounded hover:bg-muted transition-colors"
-                    title="Edit entry (or double-click the text)"
+                    title="Edit memory (or double-click the text)"
                   >
                     <Edit2 className="w-3 h-3 text-muted-foreground" />
                   </button>
@@ -273,7 +273,7 @@ export function EntriesList({
                       onDeleteEntry(entry.id)
                     }}
                     className="p-1 rounded hover:bg-muted transition-colors hover:text-red-600"
-                    title="Delete entry"
+                    title="Delete memory"
                   >
                     <X className="w-3 h-3 text-muted-foreground" />
                   </button>
@@ -283,7 +283,7 @@ export function EntriesList({
                       openAssistForEntry(entry)
                     }}
                     className="p-1 rounded hover:bg-muted transition-colors"
-                    title="Open Writing Assistant"
+                    title="Open Memory Assistant"
                   >
                     <Sparkles className="w-3 h-3 text-muted-foreground" />
                   </button>
@@ -293,27 +293,27 @@ export function EntriesList({
               {editingId === entry.id ? (
                 <div className="mt-2">
                   <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
-                    <span>Editing entry</span>
+                    <span>Editing memory</span>
                     <span className="text-xs opacity-60">
                       (⌘+Enter to save, Esc to cancel)
                     </span>
                   </div>
-                  <YooptaEntryEditor
+                  <MemoryEditor
                     initialContent={editingContent}
                     onSubmit={handleUpdateEntry}
                     isEditing
                     onCancel={handleCancelEdit}
                     isLoading={updateEntryMutation.isPending}
-                    placeholder="Edit your entry..."
+                    placeholder="Edit your memory..."
                   />
                 </div>
               ) : (
                 <div
                   className="text-foreground leading-relaxed cursor-text rounded p-2 -m-2 transition-all duration-500 relative group/entry hover:bg-muted/20"
                   onDoubleClick={() => handleEditEntry(entry)}
-                  title="Double-click to edit"
+                  title="Double-click to edit memory"
                 >
-                  <YooptaContentRenderer content={entry.content} />
+                                      <MemoryRenderer content={entry.content} />
 
                   {/* Bottom gradient effect on hover */}
                   <span className="absolute inset-x-0 -bottom-px block h-px w-full journal-entry-gradient opacity-0 transition duration-500 group-hover/entry:opacity-100" />
@@ -334,7 +334,7 @@ export function EntriesList({
         >
           <Loader2 className="w-6 h-6 mx-auto animate-spin text-muted-foreground" />
           <p className="text-xs text-muted-foreground mt-2">
-            Loading more entries...
+            Loading more memories...
           </p>
         </motion.div>
       )}

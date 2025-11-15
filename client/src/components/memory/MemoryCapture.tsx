@@ -1,26 +1,26 @@
 import { Button } from "@/components/ui/button"
 import { MessageSquare } from "lucide-react"
-import { YooptaEntryEditor } from "./YooptaEntryEditor"
+import { MemoryEditor } from "./MemoryEditor"
 import { useUIStore } from "@/stores/ui-store"
 
-interface WritingSectionProps {
+interface MemoryCaptureProps {
   isSaving: boolean
   lastSaved: Date | null
   onSaveEntry: (content: any, textContent: string) => Promise<void>
 }
 
-export function WritingSection({
+export function MemoryCapture({
   isSaving,
   lastSaved,
   onSaveEntry,
 }: WritingSectionProps) {
   return (
-    <div className="mt-6" data-section="writing">
+    <div className="mt-6" data-section="memory-capture">
       <div className="relative">
-        <YooptaEntryEditor
+        <MemoryEditor
           onSubmit={onSaveEntry}
           isLoading={isSaving}
-          placeholder="What's on your mind today?"
+          placeholder="What memory would you like to capture today?"
         />
       </div>
 
@@ -30,7 +30,7 @@ export function WritingSection({
           {isSaving && (
             <span className="flex items-center gap-1">
               <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-              Saving...
+              Saving memory...
             </span>
           )}
           {lastSaved && !isSaving && (
@@ -45,24 +45,24 @@ export function WritingSection({
             size="sm"
             variant="ghost"
             className="px-2 py-1 text-xs hover:bg-muted/50 transition-colors"
-            title="Toggle AI Chat (Ctrl+K)"
+            title="Toggle Memory Chat (Ctrl+K)"
           >
             <MessageSquare className="w-3 h-3 mr-1" />
-            AI Chat
+            Memory Chat
             <span className="ml-1 opacity-60">Ctrl+K</span>
           </Button>
 
           {/* Save Button */}
           <Button
             onClick={() => {
-              // No-op here — saving is handled inside the YooptaEntryEditor via keyboard shortcut (⌘+Enter)
+              // No-op here — saving is handled inside the MemoryEditor via keyboard shortcut (⌘+Enter)
             }}
             disabled={isSaving}
             size="sm"
             variant="gradient"
-            title="Save entry (⌘+Enter)"
+            title="Save memory (⌘+Enter)"
           >
-            Save
+            Save Memory
             <span className="ml-1 opacity-60">⌘+Enter</span>
           </Button>
         </div>

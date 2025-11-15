@@ -174,9 +174,9 @@ export function RagChat({ open, onClose }: RagChatProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border/50">
           <div className="flex flex-col">
-            <span className="text-sm font-medium">Journal Assistant</span>
+            <span className="text-sm font-medium">Memory Assistant</span>
             <span className="text-xs text-muted-foreground">
-              Ask questions about your entries
+              Ask questions about your memories
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -200,11 +200,11 @@ export function RagChat({ open, onClose }: RagChatProps) {
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <p className="text-sm font-medium mb-2">
-                Ask me about your journal entries
+                Ask me about your memories
               </p>
               <p className="text-xs opacity-70 mb-6">
                 I can help you analyze, summarize, or find patterns in your
-                writing
+                thoughts and experiences
               </p>
 
               {/* Suggestions section - using Card components with GlowingEffect */}
@@ -214,41 +214,41 @@ export function RagChat({ open, onClose }: RagChatProps) {
                 </p>
                 <div className="grid grid-cols-1 gap-3 max-w-md mx-auto">
                   <SuggestionCard
-                    text="What themes have I been writing about lately?"
+                    text="What memories have I been capturing lately?"
                     onClick={() =>
                       handleSuggestionClick(
-                        "What themes have I been writing about lately?"
+                        "What memories have I been capturing lately?"
                       )
                     }
                   />
                   <SuggestionCard
-                    text="Summarize my entries from this week"
+                    text="Summarize my memories from this week"
                     onClick={() =>
                       handleSuggestionClick(
-                        "Summarize my entries from this week"
+                        "Summarize my memories from this week"
                       )
                     }
                   />
                   <SuggestionCard
-                    text="Find entries where I mentioned work stress"
+                    text="Find memories where I mentioned work stress"
                     onClick={() =>
                       handleSuggestionClick(
-                        "Find entries where I mentioned work stress"
+                        "Find memories where I mentioned work stress"
                       )
                     }
                   />
                   <SuggestionCard
-                    text="What patterns do you see in my journaling?"
+                    text="What patterns do you see in my memories?"
                     onClick={() =>
                       handleSuggestionClick(
-                        "What patterns do you see in my journaling?"
+                        "What patterns do you see in my memories?"
                       )
                     }
                   />
                   <SuggestionCard
-                    text="Show me my most emotional entries"
+                    text="Show me my most emotional memories"
                     onClick={() =>
-                      handleSuggestionClick("Show me my most emotional entries")
+                      handleSuggestionClick("Show me my most emotional memories")
                     }
                   />
                   <SuggestionCard
@@ -303,9 +303,9 @@ export function RagChat({ open, onClose }: RagChatProps) {
               <div className="bg-muted rounded-lg px-3 py-2">
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">
-                    Searching your journal...
-                  </span>
+                                     <span className="text-sm text-muted-foreground">
+                     Searching your memories...
+                   </span>
                 </div>
               </div>
             </div>
@@ -321,19 +321,19 @@ export function RagChat({ open, onClose }: RagChatProps) {
           className="p-4 bg-background flex-shrink-0"
         >
           <div className="flex-1 gap-2">
-            <Input
-              ref={inputRef}
-              type="text"
-              className="w-full"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about your journal entries..."
-              disabled={isLoading}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground mt-2 opacity-70">
-            AI analyzes your journal entries to provide personalized insights
-          </p>
+                         <Input
+               ref={inputRef}
+               type="text"
+               className="w-full"
+               value={input}
+               onChange={(e) => setInput(e.target.value)}
+               placeholder="Ask about your memories..."
+               disabled={isLoading}
+             />
+           </div>
+           <p className="text-xs text-muted-foreground mt-2 opacity-70">
+             AI analyzes your memories to provide personalized insights
+           </p>
         </form>
       </div>
     </div>

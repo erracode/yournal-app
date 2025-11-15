@@ -1,11 +1,11 @@
 import { useMemo } from "react"
 
-interface YooptaContentRendererProps {
+interface MemoryRendererProps {
   content: string | object
   className?: string
 }
 
-export function YooptaContentRenderer({
+export function MemoryRenderer({
   content,
   className = "",
 }: YooptaContentRendererProps) {

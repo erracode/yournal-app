@@ -99,10 +99,10 @@ export function ExpandSuggestionPanel({
     <>
       <div className="flex items-center justify-between p-4  ">
         <div className="flex flex-col">
-          <span className="text-sm font-medium">Writing Assistant</span>
-          <span className="text-xs text-muted-foreground">
-            Suggestion for entry #{entryId}
-          </span>
+                      <span className="text-sm font-medium">Memory Assistant</span>
+                      <span className="text-xs text-muted-foreground">
+              Suggestion for memory #{entryId}
+            </span>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -111,9 +111,9 @@ export function ExpandSuggestionPanel({
             onClick={handleCopy}
             disabled={!suggestion}
             className="h-8 w-8 p-0 relative"
-            aria-label={copied ? "Copied" : "Copy to clipboard"}
+            aria-label={copied ? "Copied" : "Copy to memory"}
           >
-            <span className="sr-only">{copied ? "Copied" : "Copy"}</span>
+            <span className="sr-only">{copied ? "Copied" : "Copy to memory"}</span>
             <Copy
               className={`h-4 w-4 transition-all duration-300 ${
                 copied ? "scale-0" : "scale-100"
@@ -137,7 +137,7 @@ export function ExpandSuggestionPanel({
       </div>
 
       <div className="p-4 h-[calc(100%-8rem)] overflow-y-auto">
-        <div className="mb-3 text-xs text-muted-foreground">Original</div>
+        <div className="mb-3 text-xs text-muted-foreground">Original Memory</div>
         <div className="mb-4 p-3 bg-muted/20  text-sm  whitespace-pre-wrap">
           {entryText || "(no text available)"}
         </div>
@@ -261,9 +261,9 @@ export function ExpandSuggestionPanel({
             onClick={handleCopy}
             disabled={loading || !suggestion}
             className="relative"
-            aria-label={copied ? "Copied" : "Copy to clipboard"}
+            aria-label={copied ? "Copied" : "Copy to memory"}
           >
-            <span className="sr-only">{copied ? "Copied" : "Copy"}</span>
+            <span className="sr-only">{copied ? "Copied" : "Copy to memory"}</span>
             <Copy
               className={`h-4 w-4 mr-2 transition-all duration-300 ${
                 copied ? "scale-0" : "scale-100"
@@ -274,7 +274,7 @@ export function ExpandSuggestionPanel({
                 copied ? "scale-100" : "scale-0"
               }`}
             />
-            {copied ? "Copied!" : "Copy to Clipboard"}
+                              {copied ? "Copied!" : "Copy to Memory"}
           </Button>
         </div>
       </div>

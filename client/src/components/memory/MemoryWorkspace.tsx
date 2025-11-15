@@ -1,13 +1,13 @@
 import { useState } from "react"
 import { useUser } from "@/lib/auth-hooks"
 import { useEntries, useCreateEntry, useDeleteEntry } from "@/lib/entries-hooks"
-import { EntriesList } from "./EntriesList"
-import { WritingSection } from "./WritingSection"
+import { MemoryList } from "./MemoryList"
+import { MemoryCapture } from "./MemoryCapture"
 import { ExpandSuggestionPanelContainer } from "./ExpandSuggestionPanelContainer"
 import { RagChatContainer } from "../ai/RagChatContainer"
 import type { Entry } from "@/lib/entries-hooks"
 
-export function RichTextJournal() {
+export function MemoryWorkspace() {
   const { data: user, isLoading: userLoading } = useUser()
   const {
     data: entriesData,
@@ -19,7 +19,7 @@ export function RichTextJournal() {
   const createEntryMutation = useCreateEntry()
   const deleteEntryMutation = useDeleteEntry()
 
-  // Flatten all entries from all pages and reverse to show newest at bottom
+  // Flatten all memories from all pages and reverse to show newest at bottom
   const allEntries =
     entriesData?.pages.flatMap((page) => page.entries).reverse() || []
 
@@ -51,14 +51,14 @@ export function RichTextJournal() {
 
   const handleEditEntry = (entry: Entry) => {
     // This function is now just a callback for the parent component
-    // The actual editing logic is handled inside EntriesList
+    // The actual editing logic is handled inside MemoryList
     console.log("Edit entry requested:", entry.id)
   }
 
   const handleDeleteEntry = async (id: number) => {
     if (
       !confirm(
-        "Are you sure you want to delete this entry? This action cannot be undone."
+        "Are you sure you want to delete this memory? This action cannot be undone."
       )
     ) {
       return
@@ -91,9 +91,9 @@ export function RichTextJournal() {
           {/* Left Column - Reserved for future features */}
           <div className="col-span-1"></div>
 
-          {/* Center Column - Journal Content */}
+          {/* Center Column - Memory Center */}
           <div className="col-span-1 px-6 py-6 overflow-y-auto scrollbar-thin">
-            <EntriesList
+            <MemoryList
               entries={allEntries}
               isLoading={entriesLoading}
               isFetchingNextPage={isFetchingNextPage}
@@ -103,17 +103,17 @@ export function RichTextJournal() {
               onDeleteEntry={handleDeleteEntry}
             />
 
-            <WritingSection
+            <MemoryCapture
               isSaving={isSaving}
               lastSaved={lastSaved}
               onSaveEntry={handleSaveEntry}
             />
           </div>
 
-          {/* Right Column - AI Tools (Chat & Writing Assistant) */}
+          {/* Right Column - AI Tools (Chat & Memory Assistant) */}
           <RagChatContainer />
 
-          {/* Writing Assistant Panel (animated like Chat panel) */}
+          {/* Memory Assistant Panel (animated like Chat panel) */}
           <ExpandSuggestionPanelContainer />
         </div>
       </main>
